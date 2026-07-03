@@ -2,11 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 
 type Route = "/residential" | "/travel" | "/kiosk" | "unknown";
 type ResidentialDemoStep = "arrival" | "recipient" | "deposit" | "notice" | "pickup" | "done";
-type TravelDemoStep = "size" | "time" | "payment" | "confirmed" | "return" | "why" | "charge" | "done";
+type TravelDemoStep = "choice" | "size" | "time" | "data" | "payment" | "confirmed" | "store-open" | "stored" | "pickup" | "pickup-open" | "done";
+type TravelDemoMode = "store" | "pickup" | null;
 type KioskExperience = "select" | "residential" | "travel";
 type ResidentialKioskMode = "home" | "deliver-unit" | "deliver-confirm" | "deliver-open" | "deliver-done" | "pickup-code" | "pickup-confirm" | "pickup-open" | "pickup-done";
 type TravelKioskMode = "home" | "store-size" | "store-time" | "store-data" | "store-summary" | "store-pay" | "store-confirmed" | "store-open" | "store-done" | "pickup-code" | "pickup-confirm" | "pickup-open" | "pickup-done";
-type LockerSize = "Pequeño" | "Mediano" | "Grande";
+type LockerSize = "Mediano" | "Grande";
 type KioskTravelSize = "Mediano" | "Grande";
 type TravelTime = "2 horas" | "6 horas" | "12 horas" | "24 horas";
 
@@ -23,6 +24,7 @@ type TravelPassenger = {
   name: string;
   whatsapp: string;
   email: string;
+  documentType: string;
   document: string;
 };
 
@@ -67,6 +69,7 @@ const defaultTravelKiosk: TravelKioskState = {
     name: "",
     whatsapp: "",
     email: "",
+    documentType: "RUT",
     document: ""
   },
   payment: "Webpay",
@@ -98,6 +101,11 @@ function formatPrice(value: number) {
     currency: "CLP",
     maximumFractionDigits: 0
   }).format(value);
+}
+
+function travelPrice(size: LockerSize | KioskTravelSize, time: TravelTime) {
+  const amount = prices[time];
+  return size === "Grande" ? Math.round(amount * 1.45) : amount;
 }
 
 function saveFakeQr(name: string) {
@@ -215,20 +223,53 @@ function ResidentialExperience() {
 }
 
 function TravelExperience() {
-  const [step, setStep] = useState<TravelDemoStep>("size");
+  const [step, setStep] = useState<TravelDemoStep>("choice");
+  const [mode, setMode] = useState<TravelDemoMode>(null);
   const [size, setSize] = useState<LockerSize>("Mediano");
   const [time, setTime] = useState<TravelTime>("6 horas");
+  const activeSteps = mode === "pickup"
+    ? ["choice", "pickup", "pickup-open", "done"]
+    : ["choice", "size", "time", "data", "payment", "confirmed", "store-open", "stored"];
+
+  const resetTravel = () => {
+    setMode(null);
+    setStep("choice");
+  };
+
+  const selectSize = (nextSize: LockerSize) => {
+    setSize(nextSize);
+    setStep("time");
+  };
+
+  const selectTime = (nextTime: TravelTime) => {
+    setTime(nextTime);
+    setStep("data");
+  };
 
   return (
     <DemoShell label="QOLQA Travel" title="Guarda tu equipaje y sigue tu viaje">
-      <Progress current={["size", "time", "payment", "confirmed", "return", "why", "charge", "done"].indexOf(step) + 1} total={8} />
+      <Progress current={activeSteps.indexOf(step) + 1} total={activeSteps.length} />
+      {step === "choice" && (
+        <VisualScreen
+          eyebrow="Inicio"
+          title="¿Qué quieres hacer?"
+          copy="Elige la acción que usarías frente al locker."
+          visual={<TravelChoiceScene />}
+          action={(
+            <div className="split-actions">
+              <button className="primary-action" onClick={() => { setMode("store"); setStep("size"); }}>Guardar equipaje</button>
+              <button className="secondary-action" onClick={() => { setMode("pickup"); setStep("pickup"); }}>Retirar equipaje</button>
+            </div>
+          )}
+        />
+      )}
       {step === "size" && (
         <VisualScreen
           eyebrow="Paso 1"
           title="Elige tamaño"
-          copy="Selecciona el compartimiento según lo que llevas contigo."
-          visual={<SizeSelector selected={size} onSelect={setSize} />}
-          action={<button className="primary-action" onClick={() => setStep("time")}>Elegir tiempo</button>}
+          copy="Selecciona el compartimiento según lo que llevas contigo. Al tocar una opción avanzas al siguiente paso."
+          visual={<SizeSelector selected={size} onSelect={selectSize} />}
+          action={<span className="screen-hint">Toca un tamaño para continuar</span>}
         />
       )}
       {step === "time" && (
@@ -236,15 +277,24 @@ function TravelExperience() {
           eyebrow="Paso 2"
           title="Elige tiempo"
           copy="Puedes guardar tu equipaje por algunas horas o por todo el día."
-          visual={<TimeSelector selected={time} onSelect={setTime} />}
+          visual={<TimeSelector selected={time} onSelect={selectTime} />}
+          action={<span className="screen-hint">Toca el tiempo que necesitas</span>}
+        />
+      )}
+      {step === "data" && (
+        <VisualScreen
+          eyebrow="Paso 3"
+          title="Datos del pasajero"
+          copy="Estos datos se utilizan para seguridad, trazabilidad y contacto ante incidencias."
+          visual={<PassengerDataScene />}
           action={<button className="primary-action" onClick={() => setStep("payment")}>Ver valor</button>}
         />
       )}
       {step === "payment" && (
         <VisualScreen
-          eyebrow="Resumen"
-          title={formatPrice(prices[time])}
-          copy={`${size} por ${time}. El pago se realiza en medios habituales del pasajero.`}
+          eyebrow="Pago"
+          title={formatPrice(travelPrice(size, time))}
+          copy={`${size} por ${time}. Puedes continuar con los medios de pago disponibles. No se realiza cobro real.`}
           visual={<PaymentScene />}
           action={<button className="primary-action" onClick={() => setStep("confirmed")}>Continuar al pago</button>}
         />
@@ -253,37 +303,47 @@ function TravelExperience() {
         <VisualScreen
           eyebrow="Reserva confirmada"
           title="Tu acceso está listo"
-          copy="Guarda el PIN o QR para abrir el locker cuando regreses."
+          copy="Guarda el PIN o QR. También puedes recibirlo por correo electrónico o SMS."
           visual={<TicketScene pin="759204" locker="M-08" time={time} />}
-          action={<button className="primary-action" onClick={() => setStep("return")}>Volver a retirar</button>}
+          action={<button className="primary-action" onClick={() => setStep("store-open")}>Abrir casillero</button>}
           extra={<button className="text-action" onClick={() => saveFakeQr("qolqa-travel-qr.svg")}>Guardar QR como imagen</button>}
         />
       )}
-      {step === "return" && (
+      {step === "store-open" && (
+        <VisualScreen
+          eyebrow="Guardar equipaje"
+          title="Puerta abierta"
+          copy="Deja el equipaje en el compartimiento asignado y cierra la puerta."
+          visual={<TravelLockerVisual size={size} open />}
+          action={<button className="primary-action" onClick={() => setStep("stored")}>Equipaje guardado</button>}
+        />
+      )}
+      {step === "stored" && (
+        <VisualScreen
+          eyebrow="Listo"
+          title="Equipaje guardado correctamente"
+          copy="Tu equipaje queda seguro hasta que vuelvas a retirarlo con PIN o QR."
+          visual={<CompletedScene label="Reserva activa" />}
+          action={<button className="secondary-action" onClick={resetTravel}>Volver al inicio</button>}
+        />
+      )}
+      {step === "pickup" && (
         <VisualScreen
           eyebrow="Retiro"
           title="Escanea QR o ingresa PIN"
-          copy="La puerta se abre y puedes retirar tu equipaje sin filas."
+          copy="Usa el acceso recibido para validar tu reserva y abrir el compartimiento."
           visual={<TravelPickupScene />}
-          action={<button className="primary-action" onClick={() => setStep("why")}>Retirar equipaje</button>}
+          action={<button className="primary-action" onClick={() => setStep("pickup-open")}>Validar acceso</button>}
+          extra={<button className="text-action" onClick={resetTravel}>Volver al inicio</button>}
         />
       )}
-      {step === "why" && (
+      {step === "pickup-open" && (
         <VisualScreen
-          eyebrow="Mientras esperas"
-          title="Muévete sin cargar maletas"
-          copy="Puedes ir a comer, comprar, recorrer la ciudad, trabajar o descansar."
-          visual={<CityFreedomScene />}
-          action={<button className="primary-action" onClick={() => setStep("charge")}>Ver carga USB</button>}
-        />
-      )}
-      {step === "charge" && (
-        <VisualScreen
-          eyebrow="Carga USB"
-          title="Algunos compartimientos incluyen USB-A y USB-C"
-          copy="Tus pertenencias permanecen seguras mientras cargas tus dispositivos."
-          visual={<UsbChargeScene />}
-          action={<button className="primary-action" onClick={() => setStep("done")}>Finalizar</button>}
+          eyebrow="Retiro"
+          title="Puerta abierta"
+          copy="Retira tu equipaje y cierra la puerta para finalizar."
+          visual={<TravelLockerVisual size={size} open />}
+          action={<button className="primary-action" onClick={() => setStep("done")}>Retirar equipaje</button>}
         />
       )}
       {step === "done" && (
@@ -292,9 +352,10 @@ function TravelExperience() {
           title="Gracias por usar QOLQA"
           copy="Equipaje retirado correctamente."
           visual={<CompletedScene label="Equipaje retirado" />}
-          action={<button className="secondary-action" onClick={() => setStep("size")}>Ver nuevamente</button>}
+          action={<button className="secondary-action" onClick={resetTravel}>Volver al inicio</button>}
         />
       )}
+      <TravelInfoSection />
       <BenefitStrip
         title="Beneficios Travel"
         items={[
@@ -569,7 +630,8 @@ function TravelKiosk({
             ["name", "Nombre completo"],
             ["whatsapp", "WhatsApp"],
             ["email", "Correo electrónico"],
-            ["document", "RUT / DNI / Pasaporte"]
+            ["documentType", "Tipo documento"],
+            ["document", "Numero documento"]
           ].map(([key, label]) => (
             <label className="field" key={key}>
               {label}
@@ -583,7 +645,7 @@ function TravelKiosk({
             </label>
           ))}
         </div>
-        <p className="privacy-note">Los datos solicitados se utilizan únicamente para identificación, seguridad operacional y contacto en caso de incidencias.</p>
+        <p className="privacy-note">Estos datos se utilizan para seguridad, trazabilidad y contacto ante incidencias.</p>
         <button className="touch-button" disabled={!dataReady} onClick={() => setMode("store-summary")}>Ver resumen</button>
       </KioskPanel>
     );
@@ -596,7 +658,7 @@ function TravelKiosk({
           rows={[
             ["Tamaño", state.size],
             ["Tiempo", state.time],
-            ["Precio estimado", formatPrice(prices[state.time])],
+            ["Precio estimado", formatPrice(travelPrice(state.size, state.time))],
             ["Pasajero", state.passenger.name],
             ["Contacto", state.passenger.whatsapp]
           ]}
@@ -806,6 +868,37 @@ function RecipientFormPreview() {
   );
 }
 
+function TravelChoiceScene() {
+  return (
+    <div className="travel-choice-scene">
+      <article>
+        <span className="bag-illustration mediano" />
+        <strong>Guardar equipaje</strong>
+        <small>Elige tamaño, tiempo y recibe PIN/QR.</small>
+      </article>
+      <article>
+        <QrCode />
+        <strong>Retirar equipaje</strong>
+        <small>Escanea QR o ingresa PIN para abrir.</small>
+      </article>
+    </div>
+  );
+}
+
+function PassengerDataScene() {
+  return (
+    <div className="phone-panel">
+      <span className="panel-title">Guardar equipaje</span>
+      <label>Nombre completo<input readOnly value="Camila Torres" /></label>
+      <label>WhatsApp<input readOnly value="+56 9 1111 2222" /></label>
+      <label>Correo electronico<input readOnly value="camila@demo.qolqa" /></label>
+      <label>Tipo documento<input readOnly value="RUT" /></label>
+      <label>Documento<input readOnly value="12.345.678-9" /></label>
+      <div className="mini-confirm">Seguridad, trazabilidad y contacto ante incidencias</div>
+    </div>
+  );
+}
+
 function LockerScene({ active, open }: { active: string; open?: boolean }) {
   return (
     <div className="locker-visual residential-locker">
@@ -861,11 +954,11 @@ function PickupScene() {
 function SizeSelector({ selected, onSelect }: { selected: LockerSize; onSelect: (size: LockerSize) => void }) {
   return (
     <div className="size-cards">
-      {(["Pequeño", "Mediano", "Grande"] as LockerSize[]).map((size) => (
+      {(["Mediano", "Grande"] as LockerSize[]).map((size) => (
         <button className={selected === size ? "selected" : ""} key={size} onClick={() => onSelect(size)}>
           <span className={`bag-illustration ${size.toLowerCase()}`} />
           <strong>{size}</strong>
-          <small>{size === "Pequeño" ? "bolso pequeño" : size === "Mediano" ? "mochila o carry-on" : "maleta grande"}</small>
+          <small>{size === "Mediano" ? "mochila, bolso, carry-on" : "maleta grande, equipaje voluminoso"}</small>
         </button>
       ))}
     </div>
@@ -930,6 +1023,29 @@ function CityFreedomScene() {
       ))}
       <strong>Sin cargar maletas</strong>
     </div>
+  );
+}
+
+function TravelInfoSection() {
+  return (
+    <section className="travel-info-section" aria-label="Información adicional Travel">
+      <article className="travel-info-card">
+        <div>
+          <p className="eyebrow">Mientras esperas</p>
+          <h2>Muévete sin cargar maletas</h2>
+          <p>Puedes ir a comer, comprar, recorrer la ciudad, trabajar o descansar mientras tu equipaje queda seguro.</p>
+        </div>
+        <CityFreedomScene />
+      </article>
+      <article className="travel-info-card">
+        <div>
+          <p className="eyebrow">Carga USB</p>
+          <h2>Algunos compartimientos incluyen USB-A y USB-C</h2>
+          <p>Tus pertenencias permanecen seguras mientras cargas celulares o dispositivos pequeños.</p>
+        </div>
+        <UsbChargeScene compact />
+      </article>
+    </section>
   );
 }
 
