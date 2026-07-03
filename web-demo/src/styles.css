@@ -53,6 +53,7 @@ button:disabled {
 .kiosk-header,
 .kiosk-footer,
 .action-row,
+.split-actions,
 .payment-row,
 .credential-card,
 .ticket-scene,
@@ -164,6 +165,23 @@ button:disabled {
   margin-top: 12px;
 }
 
+.split-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.screen-hint {
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 18px;
+  background: #f8fbfc;
+  color: var(--teal);
+  font-weight: 900;
+}
+
 .primary-action,
 .secondary-action,
 .text-action,
@@ -204,6 +222,7 @@ button:disabled {
 .locker-visual,
 .notification-stack,
 .pickup-scene,
+.travel-choice-scene,
 .size-cards,
 .time-grid,
 .payment-scene,
@@ -540,6 +559,36 @@ button:disabled {
   padding: 18px;
 }
 
+.travel-choice-scene {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+}
+
+.travel-choice-scene article {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 250px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  background: #f8fbfc;
+  text-align: center;
+}
+
+.travel-choice-scene strong {
+  color: var(--navy);
+  font-size: 24px;
+}
+
+.travel-choice-scene small {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .scan-card {
   display: grid;
   gap: 10px;
@@ -596,6 +645,43 @@ button:disabled {
 .usb-panel strong {
   color: var(--teal);
   font-size: 24px;
+}
+
+.travel-info-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: min(1080px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 0 0 28px;
+}
+
+.travel-info-card {
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--white);
+  box-shadow: 0 18px 50px rgba(7, 26, 47, 0.08);
+}
+
+.travel-info-card h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.1;
+}
+
+.travel-info-card p:not(.eyebrow) {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.travel-info-card .freedom-grid,
+.travel-info-card .usb-scene {
+  box-shadow: none;
 }
 
 .travel-locker {
@@ -851,11 +937,13 @@ button:disabled {
   .visual-screen,
   .pickup-scene,
   .travel-pickup-scene,
-  .usb-scene {
+  .usb-scene,
+  .travel-info-section {
     grid-template-columns: 1fr;
   }
 
   .benefit-strip div,
+  .travel-choice-scene,
   .size-cards,
   .time-grid,
   .form-grid,
