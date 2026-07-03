@@ -1,13 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
   "installCommand": "npm --prefix web-demo ci",
-  "buildCommand": "npm --prefix web-demo run build",
-  "outputDirectory": "web-demo/dist",
+  "buildCommand": "npm --prefix web-demo run build && node web-demo/scripts/prepare-vercel-output.mjs",
+  "outputDirectory": "web-demo/site-dist",
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/residential",
+      "destination": "/residential/index.html"
+    },
+    {
+      "source": "/travel",
+      "destination": "/travel/index.html"
+    },
+    {
+      "source": "/kiosk",
+      "destination": "/kiosk/index.html"
     }
   ]
 }
