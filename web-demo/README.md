@@ -1,6 +1,6 @@
-# QOLQA Web Comercial
+# QOLQA Demos Privadas
 
-Sitio público para presentar QOLQA Residential y QOLQA Travel a clientes potenciales. Está construido como una app React + Vite + TypeScript, aislada del resto del monorepo y lista para publicar en Vercel.
+Motor de demos privadas para QOLQA Residential, QOLQA Travel y la pantalla de kiosco. El Home público de QOLQA se mantiene fuera de esta app y no se reemplaza.
 
 ## Desarrollo local
 
@@ -12,7 +12,13 @@ npm install
 npm run dev
 ```
 
-Vite levantará el sitio en `http://localhost:5174`.
+Vite mostrará la URL local disponible, normalmente `http://localhost:5173`.
+
+Rutas de demo:
+
+- `/residential`
+- `/travel`
+- `/kiosk`
 
 ## Build y vista previa
 
@@ -21,18 +27,25 @@ npm run build
 npm run preview
 ```
 
-La salida de producción queda en `dist/`.
+La salida de la app queda en `dist/`.
+
+Para preparar el output combinado que usa Vercel desde la raíz del repo:
+
+```bash
+npm --prefix web-demo run build
+node web-demo/scripts/prepare-vercel-output.mjs
+```
+
+Ese paso copia el Home original y agrega `/residential`, `/travel` y `/kiosk` en `web-demo/site-dist/`.
 
 ## Deploy en Vercel
 
-Configuración recomendada al importar el repositorio:
+Configuración recomendada al importar el repositorio raíz:
 
-- Framework Preset: `Vite`
-- Root Directory: `web-demo`
-- Install Command: `npm install`
-- Build Command: `npm run build`
-- Output Directory: `dist`
+- Framework Preset: `Other`
+- Root Directory: `.`
+- Install Command: `npm --prefix web-demo ci`
+- Build Command: `npm --prefix web-demo run build && node web-demo/scripts/prepare-vercel-output.mjs`
+- Output Directory: `web-demo/site-dist`
 
-Si el repositorio importado en Vercel contiene el monorepo dentro de una carpeta superior, usar `qolqa/web-demo` como Root Directory.
-
-El archivo `vercel.json` incluye una reescritura hacia `index.html` para que las rutas `/residential` y `/travel` funcionen al abrirlas directamente.
+El `vercel.json` raíz mantiene `/` como Home original y solo reescribe `/residential`, `/travel` y `/kiosk` hacia sus pantallas de demo.
